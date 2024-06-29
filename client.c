@@ -31,7 +31,7 @@ int create_socket() {
 void initialize_address( struct sockaddr_in *server_addr ) {
     memset( server_addr, 0, sizeof( *server_addr ) );
     server_addr->sin_family      = AF_INET;
-    server_addr->sin_addr.s_addr = htons( INADDR_ANY );
+    server_addr->sin_addr.s_addr = inet_addr("192.168.5.120");
     server_addr->sin_port        = htons( SERVER_PORT );
 }
 

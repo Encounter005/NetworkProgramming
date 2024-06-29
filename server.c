@@ -91,8 +91,15 @@ int main() {
     }
     puts( "Start to listen" );
 
+    struct sockaddr_in client_addr;
+    socklen_t client_addr_size = sizeof( client_addr );
+
     while ( 1 ) {
-        int socket_client = accept( socket_server, NULL, NULL );
+        memset( &client_addr, 0, sizeof( client_addr ) );
+        int socket_client = accept(
+            socket_server, (struct sockaddr *)&client_addr, &client_addr_size );
+        printf( "The client %s:%d is connected\n",
+            inet_ntoa( client_addr.sin_addr ), ntohs( client_addr.sin_port ) );
         if ( socket_client < 0 ) {
             perror( "accept failed" );
             continue; // Attempt to accept another connection
