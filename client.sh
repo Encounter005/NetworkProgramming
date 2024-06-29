@@ -1,4 +1,4 @@
 #!/bin/bash
 
-g++ -g client.c -o client && ./client
+gcc -g client.c -o client && ./client
 
