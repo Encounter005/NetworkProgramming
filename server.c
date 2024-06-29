@@ -1,9 +1,3 @@
-/*
- *
- * filename: server.c
- *
- * */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -17,98 +11,113 @@
 #define BUFFLEN 1024
 #define BACLOG 10
 
+// 创建新的socket，返回文件描述符
 int create_socket() {
-    int res = socket( AF_INET, SOCK_STREAM, 0 );
-    if ( res < 0 ) {
-        perror( "socket creation failed" );
-        exit( EXIT_FAILURE );
+    int res = socket(AF_INET, SOCK_STREAM, 0);
+    if (res < 0) {
+        perror("create socket failed");
+        exit(EXIT_FAILURE);
     }
-    printf( "socket created successfully\n" );
+    printf("create socket successfully\n");
     return res;
 }
 
-void initialize_address( struct sockaddr_in *server_addr ) {
-    memset( server_addr, 0, sizeof( *server_addr ) );
-    server_addr->sin_family      = AF_INET;
-    server_addr->sin_addr.s_addr = htons( INADDR_ANY );
-    server_addr->sin_port        = htons( SERVER_PORT );
+// 初始化服务器地址信息
+void initialize_address(struct sockaddr_in *server_addr) {
+    memset(server_addr, 0, sizeof(*server_addr));
+    server_addr->sin_family = AF_INET;
+    // 监听所有可用地址
+    server_addr->sin_addr.s_addr = htons(INADDR_ANY);
+    server_addr->sin_port = htons(SERVER_PORT);
 }
 
-void try_bind( int socket_fd, const struct sockaddr *server_addr ) {
-    if ( bind( socket_fd, server_addr, sizeof( *server_addr ) ) < 0 ) {
-        perror( "bind failed" );
-        exit( EXIT_FAILURE );
+// 绑定socket到指定的地址
+void try_bind(int socket_fd, const struct sockaddr *server_addr) {
+    if (bind(socket_fd, server_addr, sizeof(*server_addr)) < 0) {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
     }
-    puts( "bind successful" );
+    puts("bind successfully");
 }
 
-void process_client_request( int socket_client ) {
-    char send_buf[BUFFLEN] = { 0 };
-    char recv_buf[BUFFLEN] = { 0 };
-    snprintf( send_buf, BUFFLEN, "Hi, I am server. I received your message." );
+// 处理客户端请求
+void process_client_request(int socket_client) {
+    char send_buf[BUFFLEN] = {0};
+    char recv_buf[BUFFLEN] = {0};
+    
+    // 发送的消息，以方便日后添加或修改
+    snprintf(send_buf, BUFFLEN, "Hello, this is the server");
 
-    while ( 1 ) {
-        ssize_t num_read = read( socket_client, recv_buf, BUFFLEN );
-        if ( num_read <= 0 ) {
-            if ( num_read == 0 )
-                puts( "Client disconnected" );
+    while (1) {
+        ssize_t num_read = read(socket_client, recv_buf, BUFFLEN);
+        // 客户端断开连接，或读取失败
+        if (num_read <= 0) {
+            if (num_read == 0)
+                puts("Client closed connection");
             else
-                perror( "read failed" );
+                perror("read failed");
             return;
         }
-        recv_buf[num_read] = '\0';
+        recv_buf[num_read] = '\0'; // 为接收的字符串添加结束字符
 
-        printf( "Client:%s\n", recv_buf );
+        printf("From Client: %s\n", recv_buf);
 
-        if ( strncmp( recv_buf, "exit", 4 ) == 0 ) {
-            strcpy( send_buf, "bye!!!" );
-            write( socket_client, send_buf,
-                strlen(
-                    send_buf ) ); // Not checking the return value for brevity
-            printf( "Me(Server):%s\n", send_buf );
+        if (strncmp(recv_buf, "exit", 4) == 0) { // 客户端请求退出
+            // 修改发送的消息
+            strcpy(send_buf, "bye!!!");
+            // 返回消息给客户端
+            write(socket_client, send_buf, strlen(send_buf));
+            printf("Me(Server)：%s\n", send_buf);
             return;
         }
 
-        if ( write( socket_client, send_buf, strlen( send_buf ) ) < 0 ) {
-            perror( "send failed" );
+        // 向客户端写入发送缓冲区的内容
+        if (write(socket_client, send_buf, strlen(send_buf)) < 0) {
+            perror("write failed");
             return;
         }
-        printf( "Me(Server):%s\n", send_buf );
-        bzero( recv_buf, BUFFLEN );
+        printf("Me(Server): %s\n", send_buf);
+        
+        // 清空接收缓冲区，准备下一次读取
+        memset(recv_buf, 0, BUFFLEN);
     }
 }
 
 int main() {
-    int socket_server = create_socket();
-    struct sockaddr_in server_addr;
+    int socket_server = create_socket(); // 创建socket
+    struct sockaddr_in server_addr; // 声明地址结构
 
-    initialize_address( &server_addr );
-    try_bind( socket_server, (struct sockaddr *)&server_addr );
+    initialize_address(&server_addr); // 初始化地址结构
+    try_bind(socket_server, (struct sockaddr*)&server_addr); // 绑定地址到socket
 
-    if ( listen( socket_server, BACLOG ) == -1 ) {
-        perror( "listen failed" );
-        exit( EXIT_FAILURE );
+    // 开始监听连接请求，设定最大等待连接数量为BACLOG
+    if (listen(socket_server, BACLOG) == -1) {
+        perror("listen failed");
+        exit(EXIT_FAILURE);
     }
-    puts( "Start to listen" );
+    puts("start listening");
 
     struct sockaddr_in client_addr;
-    socklen_t client_addr_size = sizeof( client_addr );
+    socklen_t client_addr_size = sizeof(client_addr);
 
-    while ( 1 ) {
-        memset( &client_addr, 0, sizeof( client_addr ) );
-        int socket_client = accept(
-            socket_server, (struct sockaddr *)&client_addr, &client_addr_size );
-        printf( "The client %s:%d is connected\n",
-            inet_ntoa( client_addr.sin_addr ), ntohs( client_addr.sin_port ) );
-        if ( socket_client < 0 ) {
-            perror( "accept failed" );
-            continue; // Attempt to accept another connection
+    while (1) {
+        // 初始化客户端地址结构
+        memset(&client_addr, 0, sizeof(client_addr));
+        // 接受新的连接请求
+        int socket_client = accept(socket_server, (struct sockaddr*)&client_addr, &client_addr_size);
+        printf("Client %s:%d connected\n",
+            inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        if (socket_client < 0) {
+            perror("receive failed");
+            continue; // 尝试接受另一个连接
         }
-        process_client_request( socket_client );
-        close( socket_client );
+        // 满足要求后开始处理客户端请求
+        process_client_request(socket_client);
+        close(socket_client); // 关闭客户端连接
     }
 
-    // This point is normally not reached
-    close( socket_server );
+    // 正常情况下不会执行到这一步
+    close(socket_server); 
     return 0;
 }
+
