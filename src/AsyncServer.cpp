@@ -32,20 +32,20 @@ void Session::handle_write( const boost::system::error_code &error ) {
     }
 }
 
-Server::Server( boost::asio::io_context &ioc, short port )
+AsyncServer::AsyncServer( boost::asio::io_context &ioc, short port )
     : _ioc( ioc ), _acceptor( ioc, tcp::endpoint( tcp::v4(), port ) ) {
     std::cout << "Server started on port: " << port << std::endl;
     start_accept();
 }
 
-void Server::start_accept() {
+void AsyncServer::start_accept() {
     Session *new_session = new Session( _ioc );
     _acceptor.async_accept(
-        new_session->Socket(), std::bind( &Server::handle_accept, this,
+        new_session->Socket(), std::bind( &AsyncServer::handle_accept, this,
                                    new_session, placeholders::_1 ) );
 }
 
-void Server::handle_accept(
+void AsyncServer::handle_accept(
     Session *new_session, const boost::system::error_code &error ) {
     if ( !error ) {
         new_session->Start();

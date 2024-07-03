@@ -21,9 +21,9 @@ private:
     char _data[max_length];
 };
 
-class Server {
+class AsyncServer {
 public:
-    Server( boost::asio::io_context &ioc, short port );
+    AsyncServer( boost::asio::io_context &ioc, short port );
 
 private:
     void start_accept();
