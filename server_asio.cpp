@@ -1,16 +1,9 @@
-#include <boost/asio.hpp>
 #include <iostream>
-#include "src/Session.h"
+#include "src/SyncServer.h"
 
 int main() {
-    try {
-        boost::asio::io_context ioc;
-        using namespace std;
-        Server server( ioc, 8888 );
-        ioc.run();
-    } catch ( std::exception &e ) {
-        std::cerr << e.what() << std::endl;
-    }
-
+    boost::asio::io_context ioc;
+    SyncServer server(ioc, 10086);
+    server.start();
     return 0;
 }
