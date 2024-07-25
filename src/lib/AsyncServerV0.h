@@ -2,7 +2,6 @@
 #include <boost/asio.hpp>
 #include <memory>
 #include <queue>
-#include <iostream>
 using boost::asio::ip::tcp;
 
 constexpr int RECVSIZE = 1024;

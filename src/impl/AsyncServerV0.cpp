@@ -1,5 +1,5 @@
 #include "../lib/AsyncServerV0.h"
-#include <locale>
+#include <iostream>
 
 void Session::Connect(const tcp::endpoint &ep) {
     this->socket_->connect(ep);
