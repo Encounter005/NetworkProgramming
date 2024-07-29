@@ -9,7 +9,7 @@
 #include <mutex>
 #include <iostream>
 using boost::asio::ip::tcp;
-#define MAX_LENGTH 1024
+#define MAX_LENGTH 1024 * 2
 #define HEAD_LENGTH 2
 
 class AsyncServer;
@@ -49,6 +49,7 @@ public:
     std::string get_uuid();
     void Start();
     void Send( char *msg, int max_length );
+    void PrintRecvData(char *data, int length);
 
 private:
     void HandleRead( const boost::system::error_code &error,
@@ -61,6 +62,10 @@ private:
     AsyncServer *_server;
     std::queue<std::shared_ptr<MsgNode>> _send_que;
     std::mutex _send_lock;
+
+    std::shared_ptr<MsgNode> _recv_msg_node;  //收到消息结构
+    bool _b_head_parse;                       //是否处理完头部信息
+    std::shared_ptr<MsgNode> _recv_head_node; //收到头部结构
 };
 
 class AsyncServer {

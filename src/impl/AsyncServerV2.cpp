@@ -1,5 +1,7 @@
 #include "../lib/AsyncServerV2.h"
-
+#include <thread>
+#include <sstream>
+#include <iomanip>
 void AsyncServer::StartAccept() {
     std::shared_ptr<Session> new_session =
         std::make_shared<Session>( _io_context, this );
@@ -54,9 +56,134 @@ void Session::HandleWrite( const boost::system::error_code &error,
 void Session::HandleRead( const boost::system::error_code &error,
     size_t bytes_transferred, std::shared_ptr<Session> _self_shared ) {
     if ( !error ) {
-        std::cout << "Read data is: " << _data << std::endl;
-        Send( _data, bytes_transferred );
-        memset( _data, 0, MAX_LENGTH );
+        
+        PrintRecvData(_data, bytes_transferred);
+        std::chrono::seconds duration(2);
+        std::this_thread::sleep_for(duration);
+        // 已经移动的字符串
+        int copy_len = 0;
+        while ( bytes_transferred > 0 ) {
+            // 判断头部是否处理
+            if ( !_b_head_parse ) {
+                // 如果数据小于头部大小，先将数据放入_recv_head_node
+                if ( bytes_transferred + _recv_head_node->_cur_len <
+                     HEAD_LENGTH ) {
+                    memcpy( _recv_head_node->_msg + _recv_head_node->_cur_len,
+                        _data + copy_len, bytes_transferred );
+                    _recv_head_node->_cur_len += bytes_transferred;
+                    memset( _data, 0, MAX_LENGTH );
+                    _socket.async_read_some(
+                        boost::asio::buffer( _data, MAX_LENGTH ),
+                        std::bind( &Session::HandleRead, this,
+                            std::placeholders::_1, std::placeholders::_2,
+                            _self_shared ) );
+                    return;
+                }
+
+                // 收到的数据比头部多，可能是多个逻辑包，要做切包处理
+                // 头部剩余未复制的长度
+                int head_remain = HEAD_LENGTH - _recv_head_node->_cur_len;
+                memcpy( _recv_head_node->_msg + _recv_head_node->_cur_len,
+                    _data + copy_len, head_remain );
+
+                // 更新已处理的data长度和剩余未处理长度
+                copy_len += head_remain;
+                bytes_transferred -= head_remain;
+                // 获取头部数据
+                short data_len = 0;
+                memcpy( &data_len, _recv_head_node->_msg, HEAD_LENGTH );
+                std::cout << "data_len is: " << data_len << std::endl;
+
+                // 头部非法长度
+                if ( data_len > HEAD_LENGTH ) {
+                    std::cout << "Invalid data length is: " << data_len
+                              << std::endl;
+                    _server->ClearSession( _uuid );
+                    return;
+                }
+
+                _recv_msg_node = std::make_shared<MsgNode>( data_len );
+
+                // 消息的长度小于头部规定的长度，说明数据未收集全，则先将部分消息放到接收节点里
+                if ( (int)bytes_transferred < data_len ) {
+                    memcpy( _recv_msg_node->_msg + _recv_msg_node->_cur_len,
+                        _data + copy_len, bytes_transferred );
+                    _recv_msg_node->_cur_len += bytes_transferred;
+                    memset( _data, 0, MAX_LENGTH );
+                    _socket.async_read_some(
+                        boost::asio::buffer( _data, MAX_LENGTH ),
+                        std::bind( &Session::HandleRead, this,
+                            std::placeholders::_1, std::placeholders::_2,
+                            _self_shared ) );
+                    // 头部处理完成
+                    _b_head_parse = true;
+                    return;
+                }
+
+                memcpy( _recv_msg_node->_msg + _recv_msg_node->_cur_len,
+                    _data + copy_len, data_len );
+
+                _recv_msg_node->_cur_len += data_len;
+                copy_len += data_len;
+                bytes_transferred -= data_len;
+                _recv_msg_node->_msg[_recv_msg_node->_total_len] = '\0';
+                std::cout << "Recv msg is: " << _recv_msg_node->_msg
+                          << std::endl;
+                // use Send for testing
+                Send( _recv_msg_node->_msg, _recv_msg_node->_total_len );
+                // 继续轮询未处理的数据
+                _b_head_parse = false;
+                _recv_head_node->clear();
+                if ( bytes_transferred <= 0 ) {
+                    memset( _data, 0, MAX_LENGTH );
+                    _socket.async_read_some(
+                        boost::asio::buffer( _data, MAX_LENGTH ),
+                        std::bind( &Session::HandleRead, this,
+                            std::placeholders::_1, std::placeholders::_2,
+                            _self_shared ) );
+                    return;
+                }
+                continue;
+            }
+
+            // 已经处理完头部，处理上次未接收完的消息数据
+            // 接收的数据仍不足剩余未处理的
+            int remain_msg =
+                _recv_msg_node->_total_len - _recv_msg_node->_cur_len;
+            if ( (int)bytes_transferred < remain_msg ) {
+                memcpy( _recv_msg_node->_msg + _recv_msg_node->_cur_len,
+                    _data + copy_len, bytes_transferred );
+                _recv_msg_node->_cur_len += bytes_transferred;
+                memset( _data, 0, MAX_LENGTH );
+                _socket.async_read_some(
+                    boost::asio::buffer( _data, MAX_LENGTH ),
+                    std::bind( &Session::HandleRead, this,
+                        std::placeholders::_1, std::placeholders::_2,
+                        _self_shared ) );
+                return;
+            }
+
+            memcpy( _recv_msg_node->_msg + _recv_msg_node->_cur_len,
+                _data + copy_len, remain_msg );
+            bytes_transferred -= remain_msg;
+            copy_len += remain_msg;
+            _recv_msg_node->_msg[_recv_msg_node->_total_len] = '\0';
+            std::cout << "Recv msg is: " << _recv_msg_node->_msg << std::endl;
+            // use Send for testing
+            Send( _recv_msg_node->_msg, _recv_msg_node->_total_len );
+            // 继续轮询未处理的数据
+            _b_head_parse = false;
+            _recv_head_node->clear();
+            if ( bytes_transferred <= 0 ) {
+                _socket.async_read_some(
+                    boost::asio::buffer( _data, MAX_LENGTH ),
+                    std::bind( &Session::HandleRead, this,
+                        std::placeholders::_1, std::placeholders::_2,
+                        _self_shared ) );
+                return;
+            }
+            continue;
+        }
     } else {
         std::cout << "handle read failed, code is: " << error.value()
                   << " message is: " << error.message() << std::endl;
@@ -64,6 +191,19 @@ void Session::HandleRead( const boost::system::error_code &error,
     }
 }
 
+
+void Session::PrintRecvData(char *data, int length) {
+    std::stringstream ss;
+    std::string result = "0x";
+    for(int i = 0; i < length; i++) {
+        std::string hexstr;
+        ss << std::hex << std::setw(2) << std::setfill('0') << int(data[i]) << std::endl;
+        ss >> hexstr;
+        result += hexstr;
+    }
+
+    std::cout << "Recv raw data is: " << result << std::endl;
+}
 void Session::Start() {
     memset( _data, 0, MAX_LENGTH );
     _socket.async_read_some( boost::asio::buffer( _data, MAX_LENGTH ),
