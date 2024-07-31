@@ -56,10 +56,9 @@ void Session::HandleWrite( const boost::system::error_code &error,
 void Session::HandleRead( const boost::system::error_code &error,
     size_t bytes_transferred, std::shared_ptr<Session> _self_shared ) {
     if ( !error ) {
-        
-        PrintRecvData(_data, bytes_transferred);
-        std::chrono::seconds duration(2);
-        std::this_thread::sleep_for(duration);
+
+        // std::chrono::seconds duration( 2 );
+        // std::this_thread::sleep_for( duration );
         // 已经移动的字符串
         int copy_len = 0;
         while ( bytes_transferred > 0 ) {
@@ -92,6 +91,9 @@ void Session::HandleRead( const boost::system::error_code &error,
                 // 获取头部数据
                 short data_len = 0;
                 memcpy( &data_len, _recv_head_node->_msg, HEAD_LENGTH );
+                data_len =
+                    boost::asio::detail::socket_ops::host_to_network_short(
+                        data_len );
                 std::cout << "data_len is: " << data_len << std::endl;
 
                 // 头部非法长度
@@ -191,13 +193,13 @@ void Session::HandleRead( const boost::system::error_code &error,
     }
 }
 
-
-void Session::PrintRecvData(char *data, int length) {
+void Session::PrintRecvData( char *data, int length ) {
     std::stringstream ss;
     std::string result = "0x";
-    for(int i = 0; i < length; i++) {
+    for ( int i = 0; i < length; i++ ) {
         std::string hexstr;
-        ss << std::hex << std::setw(2) << std::setfill('0') << int(data[i]) << std::endl;
+        ss << std::hex << std::setw( 2 ) << std::setfill( '0' )
+           << int( data[i] ) << std::endl;
         ss >> hexstr;
         result += hexstr;
     }
@@ -213,17 +215,21 @@ void Session::Start() {
 }
 
 void Session::Send( char *msg, int max_length ) {
-    bool pending = false;
     std::lock_guard<std::mutex> lock( _send_lock );
-    if ( !_send_que.empty() ) {
-        pending = true;
-    }
-    _send_que.push( std::make_shared<MsgNode>( msg, max_length ) );
-    if ( pending ) {
+    int send_que_size = _send_que.size();
+    if ( send_que_size > MAX_SENDQUE ) {
+        std::cout << "Session: " << _uuid << " send queue fulled, size is "
+                  << MAX_SENDQUE << std::endl;
         return;
     }
 
-    boost::asio::async_write( _socket, boost::asio::buffer( msg, max_length ),
+    _send_que.push( std::make_shared<MsgNode>( msg, max_length ) );
+    if ( send_que_size > 0 ) {
+        return;
+    }
+
+    auto &msgnode = _send_que.front();
+    _socket.async_send( boost::asio::buffer( msgnode->_msg, max_length ),
         std::bind( &Session::HandleWrite, this, std::placeholders::_1,
             shared_from_this() ) );
 }

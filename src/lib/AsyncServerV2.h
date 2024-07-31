@@ -1,6 +1,7 @@
 #pragma once
 
 #include <boost/asio.hpp>
+#include <boost/asio/detail/socket_ops.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <memory>
@@ -11,6 +12,8 @@
 using boost::asio::ip::tcp;
 #define MAX_LENGTH 1024 * 2
 #define HEAD_LENGTH 2
+#define MAX_RECVQUE 10000
+#define MAX_SENDQUE 1000
 
 class AsyncServer;
 
@@ -20,8 +23,10 @@ public:
     MsgNode( char *msg, short max_len )
         : _cur_len( 0 ), _total_len( max_len + HEAD_LENGTH ) {
         _msg = new char[_total_len + 1]();     // 这里➕1是为了存放'\0'
-        memcpy( _msg, &max_len, HEAD_LENGTH ); // 留出两个字节存储消息头
-        mempcpy( _msg + HEAD_LENGTH, msg, max_len ); // 存储消息体
+        // 转为网络字节序
+        int max_len_host = boost::asio::detail::socket_ops::host_to_network_short(max_len);
+        memcpy( _msg, &max_len_host, HEAD_LENGTH ); // 留出两个字节存储消息头
+        mempcpy( _msg + HEAD_LENGTH, msg, max_len_host ); // 存储消息体
         _msg[_total_len] = '\0';
     }
     MsgNode( short max_len ) : _cur_len( 0 ), _total_len( max_len ) {
