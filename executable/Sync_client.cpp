@@ -2,6 +2,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include <vector>
 using namespace std;
 using boost::asio::ip::tcp;
 constexpr int MAX_LENGTH  = 1024 * 2;
@@ -20,16 +21,21 @@ int main() {
             return 0;
         }
 
+        std::vector<char *> msgs = { "hello world!", "genshin impact", "Kamen Rider", "made the force be with you", "awdawdawdawdawdawdawd" };
+        unsigned long index = 0;
         std::thread send_thread( [&]() {
             while ( true ) {
-                this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
-                const char *request_msg = "Hello World!";
+                // this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
+                const char *request_msg = msgs[(index++) % msgs.size()];
 
                 size_t request_len         = strlen( request_msg );
+                // request_len = boost::asio::detail::socket_ops::host_to_network_short(request_len);
                 char send_data[MAX_LENGTH] = { 0 };
                 memcpy( send_data, &request_len, 2 );
                 memcpy( send_data + 2, request_msg, request_len );
-
+                std::cout << "Send msg is: ";
+                std::cout.write(request_msg, request_len);
+                std::cout << std::endl;
                 boost::asio::write(
                     sock, boost::asio::buffer( send_data, request_len + 2 ) );
             }
@@ -37,7 +43,7 @@ int main() {
 
         std::thread recv_thread( [&]() {
             while ( true ) {
-                this_thread::sleep_for(std::chrono::milliseconds(1));
+                // this_thread::sleep_for(std::chrono::milliseconds(1));
                 std::cout << "Begin to receive" << std::endl;
                 char reply_head[HEAD_LENGTH];
                 size_t reply_length = boost::asio::read(
