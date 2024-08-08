@@ -6,6 +6,7 @@ public:
     explicit MsgNode(short length) : _total_len(length) {
         _data = new char[_total_len + 1]();
         _data[_total_len] = '\0';
+        _cur_len = 0;
     }
 
     void Clear() {
