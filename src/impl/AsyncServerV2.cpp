@@ -1,10 +1,17 @@
 #include "../lib/AsyncServerV2.h"
-#include <thread>
-#include <sstream>
-#include <iomanip>
+#include <boost/asio/write_at.hpp>
+#include "../../proto/message/transport.pb.h"
+
+
+AsyncServer::AsyncServer(boost::asio::io_context &ioc, short port) : _io_context(ioc), _port(port), _acceptor(_io_context, tcp::endpoint(tcp::v4(), port)) {
+    std::cout << "Server start at port: " << port << std::endl;
+    StartAccept();
+}
+
 void AsyncServer::StartAccept() {
     std::shared_ptr<Session> new_session =
         std::make_shared<Session>( _io_context, this );
+    std::cout << "Create a new Session, uuid is: " << new_session->get_uuid() << std::endl;
     // NOTE:
     // 在回调的时候，new_session的引用计数+1，这样保证new_session不会被销毁
     _acceptor.async_accept(
@@ -36,20 +43,25 @@ Session::Session( boost::asio::io_context &ioc, AsyncServer *server )
 
 void Session::HandleWrite( const boost::system::error_code &error,
     std::shared_ptr<Session> _self_shared ) {
-    if ( !error ) {
-        std::lock_guard<std::mutex> lock( _send_lock );
-        _send_que.pop();
-        if ( !_send_que.empty() ) {
-            auto msgnode = _send_que.front();
-            boost::asio::async_write( _socket,
-                boost::asio::buffer( msgnode->_msg, msgnode->_total_len ),
-                std::bind( &Session::HandleWrite, this, std::placeholders::_1,
-                    _self_shared ) );
+    try {
+        if ( !error ) {
+            std::lock_guard<std::mutex> lock( _send_lock );
+            _send_que.pop();
+            if ( !_send_que.empty() ) {
+                auto msgnode = _send_que.front();
+                _socket.async_write_some(
+                    boost::asio::buffer( msgnode->_msg, msgnode->_total_len ),
+                    std::bind( &Session::HandleWrite, this,
+                        std::placeholders::_1, _self_shared ) );
+            }
+        } else {
+            std::cout << "handle write failed, code is: " << error.value()
+                      << " message is: " << error.message() << std::endl;
+            _server->ClearSession( _uuid );
         }
-    } else {
-        std::cout << "handle write failed, code is: " << error.value()
-                  << " message is: " << error.message() << std::endl;
-        _server->ClearSession( _uuid );
+
+    } catch ( std::exception &e ) {
+        std::cerr << "Exception: " << e.what() << std::endl;
     }
 }
 
@@ -107,7 +119,7 @@ void Session::HandleRead( const boost::system::error_code &error,
                 _recv_msg_node = std::make_shared<MsgNode>( data_len );
 
                 // 消息的长度小于头部规定的长度，说明数据未收集全，则先将部分消息放到接收节点里
-                if ( (int)bytes_transferred < data_len ) {
+                if ( static_cast<int>( bytes_transferred ) < data_len ) {
                     memcpy( _recv_msg_node->_msg + _recv_msg_node->_cur_len,
                         _data + copy_len, bytes_transferred );
                     _recv_msg_node->_cur_len += bytes_transferred;
@@ -129,10 +141,22 @@ void Session::HandleRead( const boost::system::error_code &error,
                 copy_len += data_len;
                 bytes_transferred -= data_len;
                 _recv_msg_node->_msg[_recv_msg_node->_total_len] = '\0';
-                std::cout << "Recv msg is: " << _recv_msg_node->_msg
-                          << std::endl;
+                // std::cout << "Recv msg is: " << _recv_msg_node->_msg
+                //           << std::endl;
                 // use Send for testing
-                Send( _recv_msg_node->_msg, _recv_msg_node->_total_len );
+                // Send( _recv_msg_node->_msg, _recv_msg_node->_total_len );
+                Data msgdata;
+                std::string receive_data;
+                msgdata.ParseFromString( std::string(
+                    _recv_msg_node->_msg, _recv_msg_node->_total_len ) );
+                std::cout << "Recv msg is: " << msgdata.data() << std::endl;
+                std::string return_str =
+                    "server has receive msg, msg data is  " + msgdata.data();
+                Data msgreturn;
+                msgreturn.set_id( msgdata.id() );
+                msgreturn.set_data( msgdata.data() );
+                msgreturn.SerializeToString( &return_str );
+                Send( return_str );
                 // 继续轮询未处理的数据
                 _b_head_parse = false;
                 _recv_head_node->clear();
@@ -170,9 +194,22 @@ void Session::HandleRead( const boost::system::error_code &error,
             bytes_transferred -= remain_msg;
             copy_len += remain_msg;
             _recv_msg_node->_msg[_recv_msg_node->_total_len] = '\0';
-            std::cout << "Recv msg is: " << _recv_msg_node->_msg << std::endl;
-            // use Send for testing
-            Send( _recv_msg_node->_msg, _recv_msg_node->_total_len );
+            // std::cout << "Recv msg is: " << _recv_msg_node->_msg <<
+            // std::endl; use Send for testing Send( _recv_msg_node->_msg,
+            // _recv_msg_node->_total_len );
+            Data msgdata;
+            std::string receive_data;
+            msgdata.ParseFromString( std::string(
+                _recv_msg_node->_msg, _recv_msg_node->_total_len ) );
+            std::cout << "Recv msg is: " << msgdata.data() << std::endl;
+            std::string return_str =
+                "server has receive msg, msg data is  " + msgdata.data();
+            Data msgreturn;
+            msgreturn.set_id( msgdata.id() );
+            msgreturn.set_data( msgdata.data() );
+            msgreturn.SerializeToString( &return_str );
+            Send( return_str );
+
             // 继续轮询未处理的数据
             _b_head_parse = false;
             _recv_head_node->clear();
@@ -229,7 +266,28 @@ void Session::Send( char *msg, int max_length ) {
     }
 
     auto &msgnode = _send_que.front();
-    _socket.async_send( boost::asio::buffer( msgnode->_msg, max_length ),
+    _socket.async_write_some( boost::asio::buffer( msgnode->_msg, max_length ),
+        std::bind( &Session::HandleWrite, this, std::placeholders::_1,
+            shared_from_this() ) );
+}
+
+void Session::Send( std::string msg ) {
+    std::lock_guard<std::mutex> lock( _send_lock );
+    int send_que_size = _send_que.size();
+    if ( send_que_size > MAX_SENDQUE ) {
+        std::cout << "Session: " << _uuid << " send queue fulled, size is "
+                  << MAX_SENDQUE << std::endl;
+        return;
+    }
+
+    _send_que.push( std::make_shared<MsgNode>( msg.c_str(), msg.length() ) );
+    if ( send_que_size > 0 ) {
+        return;
+    }
+
+    auto &msgnode = _send_que.front();
+    _socket.async_send( boost::asio::buffer( msgnode->_msg,
+                            static_cast<size_t>( msgnode->_total_len ) ),
         std::bind( &Session::HandleWrite, this, std::placeholders::_1,
             shared_from_this() ) );
 }
