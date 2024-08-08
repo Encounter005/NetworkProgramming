@@ -16,7 +16,7 @@ void CServer::HandleAccept(
         std::cout << "session accept failed, error is " << error.what() << std::endl;
     }
 
-    StartAccept();
+    StartAccept();  // 再次调用 StartAccept 以持续接受新的连接
 }
 
 void CServer::StartAccept() {
