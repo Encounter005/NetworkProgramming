@@ -20,7 +20,7 @@ class AsyncServer;
 class MsgNode {
 public:
     friend class Session;
-    MsgNode( char *msg, short max_len )
+    MsgNode( const char *msg, short max_len )
         : _cur_len( 0 ), _total_len( max_len + HEAD_LENGTH ) {
         _msg = new char[_total_len + 1]();     // 这里➕1是为了存放'\0'
         // 转为网络字节序
@@ -54,6 +54,7 @@ public:
     std::string get_uuid();
     void Start();
     void Send( char *msg, int max_length );
+    void Send(std::string msg);
     void PrintRecvData(char *data, int length);
 
 private:
