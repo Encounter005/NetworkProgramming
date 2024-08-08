@@ -1,70 +1,74 @@
 #include <boost/asio.hpp>
-#include <chrono>
+#include <json/json.h>
+#include <json/value.h>
+#include <json/reader.h>
+#include <boost/asio/detail/socket_ops.hpp>
 #include <iostream>
-#include <thread>
-#include <vector>
 using namespace std;
-using boost::asio::ip::tcp;
-constexpr int MAX_LENGTH  = 1024 * 2;
-constexpr int HEAD_LENGTH = 2;
+using namespace boost::asio::ip;
+const int MAX_LENGTH = 1024 * 2;
+const int HEAD_LENGTH = 2;
+const int HEAD_TOTAL = 4;
 
 int main() {
     try {
+        // 创建上下文服务
         boost::asio::io_context ioc;
-        tcp::endpoint remote_ep(
-            boost::asio::ip::address::from_string( "127.0.0.1" ), 10086 );
+        // 构造endpoint
+        tcp::endpoint remote_ep( address::from_string( "127.0.0.1" ), 12345 );
         tcp::socket sock( ioc );
-        boost::system::error_code ec = boost::asio::error::host_not_found;
-        sock.connect( remote_ep, ec );
-        if ( ec ) {
-            cout << "connect failed: " << ec.message() << endl;
+        boost::system::error_code error = boost::asio::error::host_not_found;
+        ;
+        sock.connect( remote_ep, error );
+        if ( error ) {
+            cout << "connect failed, code is " << error.value()
+                 << " error msg is " << error.message();
             return 0;
         }
 
-        std::vector<char *> msgs = { "hello world!", "genshin impact", "Kamen Rider", "made the force be with you", "awdawdawdawdawdawdawd" };
-        unsigned long index = 0;
-        std::thread send_thread( [&]() {
-            while ( true ) {
-                // this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
-                const char *request_msg = msgs[(index++) % msgs.size()];
+        Json::Value root;
+        root["id"]                 = 1001;
+        root["data"]               = "hello world";
+        std::string request        = root.toStyledString();
+        size_t request_length      = request.length();
+        char send_data[MAX_LENGTH] = { 0 };
+        int msgid                  = 1001;
+        int msgid_host =
+            boost::asio::detail::socket_ops::host_to_network_short( msgid );
+        memcpy( send_data, &msgid_host, 2 );
+        // 转为网络字节序
+        int request_host_length =
+            boost::asio::detail::socket_ops::host_to_network_short(
+                request_length );
+        memcpy( send_data + 2, &request_host_length, 2 );
+        memcpy( send_data + 4, request.c_str(), request_length );
 
-                size_t request_len         = strlen( request_msg );
-                // request_len = boost::asio::detail::socket_ops::host_to_network_short(request_len);
-                char send_data[MAX_LENGTH] = { 0 };
-                memcpy( send_data, &request_len, 2 );
-                memcpy( send_data + 2, request_msg, request_len );
-                std::cout << "Send msg is: ";
-                std::cout.write(request_msg, request_len);
-                std::cout << std::endl;
-                boost::asio::write(
-                    sock, boost::asio::buffer( send_data, request_len + 2 ) );
-            }
-        } );
+        boost::asio::write(
+            sock, boost::asio::buffer( send_data, request_length + 4 ) );
+        cout << "begin to receive..." << endl;
 
-        std::thread recv_thread( [&]() {
-            while ( true ) {
-                // this_thread::sleep_for(std::chrono::milliseconds(1));
-                std::cout << "Begin to receive" << std::endl;
-                char reply_head[HEAD_LENGTH];
-                size_t reply_length = boost::asio::read(
-                    sock, boost::asio::buffer( reply_head, HEAD_LENGTH ) );
-                short msglen = 0;
-                memcpy( &msglen, reply_head, HEAD_LENGTH );
-                char msg[MAX_LENGTH] = { 0 };
-                size_t msg_length    = boost::asio::read(
-                    sock, boost::asio::buffer( msg, msglen ) );
-                cout << "Reply is: ";
-                cout.write( msg, msg_length ) << endl;
-                cout << "Reply length is: " << msg_length << endl;
-            }
-        } );
+        char reply_head[HEAD_TOTAL];
+        size_t reply_length = boost::asio::read(
+            sock, boost::asio::buffer( reply_head, HEAD_TOTAL ), error );
 
-        send_thread.join();
-        recv_thread.join();
-
+        msgid = 0;
+        memcpy( &msgid, reply_head, HEAD_LENGTH );
+        short msglen = 0;
+        memcpy( &msglen, reply_head + 2, HEAD_LENGTH );
+        // 转为本地字节序
+        msglen =
+            boost::asio::detail::socket_ops::network_to_host_short( msglen );
+        msgid = boost::asio::detail::socket_ops::network_to_host_short( msgid );
+        char msg[MAX_LENGTH] = { 0 };
+        size_t msg_length =
+            boost::asio::read( sock, boost::asio::buffer( msg, msglen ) );
+        Json::Reader reader;
+        reader.parse( std::string( msg, msg_length ), root );
+        std::cout << "msg id is " << root["id"] << " msg is " << root["data"]
+                  << endl;
+        getchar();
     } catch ( std::exception &e ) {
-        cerr << e.what() << endl;
+        std::cerr << "Exception: " << e.what() << endl;
     }
-
     return 0;
 }
