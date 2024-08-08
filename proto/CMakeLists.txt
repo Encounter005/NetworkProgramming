@@ -45,7 +45,7 @@ add_custom_target(
 # 设置生成源文件包含目录变量供上层引用
 set(PROTO_GEN_CXX_INCLUDE_DIRS ${PROTO_CXX_OUT} PARENT_SCOPE)
 
-# 将生成的文件打包为库 proto_gen_c
+# 将生成的文件打包为库 proto_gen_cxx
 # 程序可以链接到该库
 
 add_library(proto_gen_cxx ${OUTPUT_SOURCES_CXX})
