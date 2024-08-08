@@ -129,7 +129,7 @@ void CSession::HandleRead( const boost::system::error_code &error,
 }
 
 bool CSession::ParseHeader( size_t &bytes_transferred, int &copy_len ) {
-    std::cout << "bytes_transferred is: " << bytes_transferred << " copy_len is: " << copy_len << std::endl;
+    // std::cout << "bytes_transferred is: " << bytes_transferred << " copy_len is: " << copy_len << std::endl;
     if ( bytes_transferred + _recv_head_node->_cur_len < HEAD_TOTAL_LEN ) {
         memcpy( _recv_head_node->_data + _recv_head_node->_cur_len,
             _data + copy_len, bytes_transferred );
@@ -172,7 +172,7 @@ bool CSession::ParseHeader( size_t &bytes_transferred, int &copy_len ) {
 
 bool CSession::ParseMessage( size_t &bytes_transferred, int &copy_len ) {
     int remain_msg = _recv_msg_node->_total_len - _recv_msg_node->_cur_len;
-    std::cout << "bytes_transferred is: " << bytes_transferred << " copy_len is: " << copy_len << std::endl;
+    // std::cout << "bytes_transferred is: " << bytes_transferred << " copy_len is: " << copy_len << std::endl;
     if ( bytes_transferred < remain_msg ) {
         memcpy( _recv_msg_node->_data + _recv_msg_node->_cur_len,
             _data + copy_len, bytes_transferred );
