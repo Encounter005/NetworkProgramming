@@ -34,39 +34,30 @@ void LogicSystem::DealMsg() {
         // 判断是否为关闭状态，把所有逻辑执行完后则退出循环
         if ( _b_stop ) {
             while ( !_msg_que.empty() ) {
-                auto msg_node = _msg_que.front();
-                cout << "recv_msg id  is " << msg_node->_recvnode->_msg_id
-                     << endl;
-                auto call_back_iter =
-                    _func_callbacks.find( msg_node->_recvnode->_msg_id );
-                if ( call_back_iter == _func_callbacks.end() ) {
-                    _msg_que.pop();
-                    continue;
-                }
-                call_back_iter->second( msg_node->_session,
-                    msg_node->_recvnode->_msg_id,
-                    std::string( msg_node->_recvnode->_data,
-                        msg_node->_recvnode->_cur_len ) );
-                _msg_que.pop();
+                ProcessOneMessage();
             }
             break;
         }
 
         // 如果没有停服，且说明队列中有数据
-        auto msg_node = _msg_que.front();
-        cout << "recv_msg id  is " << msg_node->_recvnode->_msg_id << endl;
-        auto call_back_iter =
-            _func_callbacks.find( msg_node->_recvnode->_msg_id );
-        if ( call_back_iter == _func_callbacks.end() ) {
-            _msg_que.pop();
-            continue;
-        }
-        call_back_iter->second( msg_node->_session,
-            msg_node->_recvnode->_msg_id,
-            std::string(
-                msg_node->_recvnode->_data, msg_node->_recvnode->_cur_len ) );
-        _msg_que.pop();
+        ProcessOneMessage();
     }
+}
+
+void LogicSystem::ProcessOneMessage() {
+    auto msg_node = _msg_que.front();
+    cout << "recv_msg id  is " << msg_node->_recvnode->_msg_id << endl;
+
+    auto call_back_iter = _func_callbacks.find( msg_node->_recvnode->_msg_id );
+    if ( call_back_iter == _func_callbacks.end() ) {
+        _msg_que.pop();
+        return;
+    }
+
+    call_back_iter->second( msg_node->_session, msg_node->_recvnode->_msg_id,
+        std::string(
+            msg_node->_recvnode->_data, msg_node->_recvnode->_cur_len ) );
+    _msg_que.pop();
 }
 
 void LogicSystem::RegisterCallBacks() {

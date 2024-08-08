@@ -24,9 +24,7 @@ public:
 private:
     LogicSystem();
     void DealMsg();
-    // void WaitForMessaege(std::unique_lock<std::mutex>& lock);
-    // void ProcessAllMessage();
-    // void ProcessOneMessage();
+    void ProcessOneMessage();
     void RegisterCallBacks();
     void HelloWordCallBack(std::shared_ptr<CSession>, const short& msg_id, const std::string& msg_data);
     std::thread _worker_thread;
