@@ -13,7 +13,9 @@ set(CMAKE_CXX_FLAGS
 
 
 find_package(Boost 1.71.0 REQUIRED COMPONENTS system filesystem)
-find_package(Protobuf REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JSONCPP jsoncpp)
+link_libraries(${JSONCPP_LIBRARIES})
 
 if(Boost_FOUND)
 # setting source code directory
