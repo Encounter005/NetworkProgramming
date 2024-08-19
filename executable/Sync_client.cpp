@@ -35,7 +35,7 @@ int main() {
                 }
 
                 int i = 0;
-                while ( i < 500 ) {
+                while ( i < 500  ) {
                     Json::Value root;
                     root["id"]         = 1001;
                     root["data"]       = "hello world";
@@ -88,7 +88,7 @@ int main() {
                 std::cerr << "Exception: " << e.what() << std::endl;
             }
         } );
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     for(auto& t : _threads){
