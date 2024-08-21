@@ -183,7 +183,7 @@ private:
 int main() {
     try {
         boost::asio::io_context io_context;
-        client                  client(io_context, "127.0.0.1:10086", "text/html");
+        client                  client(io_context, "127.0.0.1:10086", "/count");
         io_context.run();
         getchar();
     } catch (std::exception& e) {
