@@ -80,6 +80,17 @@ void http_connection::create_response() {
             << " seconds since the epoch.</p>\n"
             << "</body>\n"
             << "</html>\n";
+    } else if (request_.target() == "/") {
+        response_.set(http::field::content_type, "text/html");
+        beast::ostream(response_.body())
+            << "<html>\n"
+            << "<head><title>The is the Main Page</title></head>\n"
+            << "<body>\n"
+            << "<h1>Welcome to the Main Page</h1>\n"
+            << "</body>\n"
+            << "</html>\n";
+
+
     } else {
         response_.result(http::status::not_found);
         response_.set(http::field::content_type, "text/plain");
