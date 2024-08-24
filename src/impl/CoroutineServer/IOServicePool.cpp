@@ -1,4 +1,4 @@
-#include "../src/lib/CoroutineServer/IOServicePool.h"
+#include "../../lib/CoroutineServer/IOServicePool.h"
 AsioIOServicePool::AsioIOServicePool( size_t thread_size )
     : _ioServices( thread_size ), _works( thread_size ), _nextIOservice( 0 ) {
 

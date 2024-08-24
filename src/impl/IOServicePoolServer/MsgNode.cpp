@@ -1,4 +1,4 @@
-#include "../src/lib/IOServicePoolServer/MsgNode.h"
+#include "../../lib/IOServicePoolServer/MsgNode.h"
 #include <boost/asio.hpp>
 
 RecvNode::RecvNode( short max_len, short msg_id )

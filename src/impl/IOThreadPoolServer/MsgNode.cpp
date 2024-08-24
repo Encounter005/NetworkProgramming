@@ -1,4 +1,4 @@
-#include "../src/lib/IOThreadPoolServer/MsgNode.h"
+#include "../../lib/IOThreadPoolServer/MsgNode.h"
 #include <boost/asio/detail/socket_ops.hpp>
 
 RecvNode::RecvNode( short max_len, short msg_id )

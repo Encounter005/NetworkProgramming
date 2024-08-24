@@ -1,13 +1,13 @@
-#include "../src/lib/IOServicePoolServer/IOServicePool.h"
-AsioIOServicePool::AsioIOServicePool( size_t thread_size )
-    : _ioServices( thread_size ), _works( thread_size ), _nextIOservice( 0 ) {
+#include "../../lib/IOServicePoolServer/IOServicePool.h"
+AsioIOServicePool::AsioIOServicePool(size_t thread_size)
+    : _ioServices(thread_size), _works(thread_size), _nextIOservice(0) {
 
-    for ( size_t i = 0; i < thread_size; ++i ) {
-        _works[i] = std::make_unique<Work>( Work( _ioServices[i] ) );
+    for (size_t i = 0; i < thread_size; ++i) {
+        _works[i] = std::make_unique<Work>(Work(_ioServices[i]));
     }
 
-    for ( auto &IOService : _ioServices ) {
-        _threads.emplace_back( [this, &IOService]() { IOService.run(); } );
+    for (auto &IOService : _ioServices) {
+        _threads.emplace_back([this, &IOService]() { IOService.run(); });
     }
 }
 
@@ -17,11 +17,11 @@ boost::asio::io_context &AsioIOServicePool::get_io_service() {
 }
 
 void AsioIOServicePool::Stop() {
-    for ( auto &work : _works ) {
+    for (auto &work : _works) {
         work.reset();
     }
 
-    for ( auto &t : _threads ) {
+    for (auto &t : _threads) {
         t.join();
     }
 }

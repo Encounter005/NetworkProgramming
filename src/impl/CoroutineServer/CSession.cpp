@@ -1,7 +1,6 @@
 #include "../../lib/CoroutineServer/CSession.h"
 #include "../../lib/CoroutineServer/CServer.h"
 #include "../../lib/CoroutineServer/LogicServer.h"
-#include "lib/CoroutineServer/IOServicePool.h"
 
 CSession::CSession( boost::asio::io_context &io_context, CServer *server )
     : _socket( io_context ), _server( server ), _b_close( false ),
