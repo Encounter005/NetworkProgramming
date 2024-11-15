@@ -22,7 +22,7 @@ int main() {
                 boost::asio::io_context ioc;
                 // 构造endpoint
                 tcp::endpoint remote_ep(
-                    address::from_string( "127.0.0.1" ), 12345 );
+                    address::from_string( "127.0.0.1" ), 10086 );
                 tcp::socket sock( ioc );
                 boost::system::error_code error =
                     boost::asio::error::host_not_found;
@@ -35,7 +35,7 @@ int main() {
                 }
 
                 int i = 0;
-                while ( i < 500  ) {
+                while ( i < 5000  ) {
                     Json::Value root;
                     root["id"]         = 1001;
                     root["data"]       = "hello world";

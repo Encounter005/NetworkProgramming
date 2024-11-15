@@ -6,3 +6,4 @@ client
 server
 client
 executable/test.cpp
+.idea
