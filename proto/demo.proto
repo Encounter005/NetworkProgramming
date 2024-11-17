@@ -1,9 +1,9 @@
 syntax = "proto3";
-
 package hello;
 
 service Greeter {
-  rpc SayHello (HelloRequest) returns (HelloReply) {}
+  rpc SayHello(HelloRequest) returns (HelloReply) {}
+  rpc SayHelloAgain(HelloRequest) returns (HelloReply) {}
   rpc Upload(stream Chunk) returns (Reply) {}
 }
 
@@ -20,7 +20,6 @@ message Chunk {
   bytes buffer = 2;
 }
 
-message Reply{
-	int32 length = 1;
+message Reply {
+  int32 length = 1;
 }
-
