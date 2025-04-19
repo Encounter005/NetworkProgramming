@@ -1,4 +1,4 @@
-#include "../../src/lib/IOThreadPoolServer/CServer.h"
+#include "../../include/IOThreadPoolServer/CServer.h"
 
 int main() {
     try {

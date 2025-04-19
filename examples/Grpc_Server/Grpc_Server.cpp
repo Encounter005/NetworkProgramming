@@ -1,4 +1,4 @@
-#include "../../out/Debug/proto/gen_cxx/demo.grpc.pb.h"
+#include "../../build/proto/gen_cxx/demo.grpc.pb.h"
 #include <grpcpp/completion_queue.h>
 #include <grpc++/grpc++.h>
 #include <iostream>

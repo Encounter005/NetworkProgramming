@@ -1,4 +1,4 @@
-#include "../../out/Debug/proto/gen_cxx/demo.grpc.pb.h"
+#include "../../build/proto/gen_cxx/demo.grpc.pb.h"
 #include <fstream>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/security/server_credentials.h>

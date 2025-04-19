@@ -1,6 +1,6 @@
-#include "../lib/AsyncServerV2.h"
+#include "../include/AsyncServerV2.h"
 #include <boost/asio/write_at.hpp>
-#include "../../out/Debug/proto/gen_cxx/transport.pb.h"
+#include "../build/proto/gen_cxx/transport.pb.h"
 
 
 AsyncServer::AsyncServer(boost::asio::io_context &ioc, short port) : _io_context(ioc), _port(port), _acceptor(_io_context, tcp::endpoint(tcp::v4(), port)) {

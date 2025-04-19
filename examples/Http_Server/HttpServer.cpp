@@ -1,4 +1,4 @@
-#include "../../src/lib/httpServer.h"
+#include "../../include/httpServer.h"
 using namespace httpserver;
 int main() {
     try {

@@ -69,8 +69,12 @@ void process_client_request(int socket_client) {
             return;
         }
         // 发送的消息，以方便日后添加或修改
-        snprintf(send_buf, BUFFLEN, "Hello, this is the server, your message is %s", recv_buf);
-        
+        snprintf(
+            send_buf,
+            BUFFLEN,
+            "Hello, this is the server, your message is %s",
+            recv_buf);
+
         // 向客户端写入发送缓冲区的内容
         if (write(socket_client, send_buf, strlen(send_buf)) < 0) {
             perror("write failed");

@@ -1,4 +1,4 @@
-#include "../../out/Debug/proto/gen_cxx/demo.grpc.pb.h"
+#include "../../build/proto/gen_cxx/demo.grpc.pb.h"
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <fstream>
@@ -11,7 +11,6 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
 
 using grpc::Channel;
 using grpc::ClientContext;

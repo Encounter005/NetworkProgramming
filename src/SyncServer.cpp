@@ -1,4 +1,4 @@
-#include "../lib/SyncServer.h"
+#include "../include/SyncServer.h"
 #include <memory>
 
 SyncServer::SyncServer( boost::asio::io_context &ioc, unsigned short port )

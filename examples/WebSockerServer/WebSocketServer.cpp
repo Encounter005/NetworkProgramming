@@ -1,4 +1,4 @@
-#include "../../src/lib/WebSocket/WebSocketServer.h"
+#include "../../include/WebSocket/WebSocketServer.h"
 
 int main() {
     try{
